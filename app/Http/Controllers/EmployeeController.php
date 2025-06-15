@@ -64,4 +64,24 @@ class EmployeeController extends Controller
         $employee->delete();
         return redirect()->route('employees.index')->with('success', 'Employee deleted successfully.');
     }
+
+    public function summary()
+    {
+        $maleCount = Employee::where('gender', 'male')->count();
+        $femaleCount = Employee::where('gender', 'female')->count();
+
+        $totalEmployees = $maleCount + $femaleCount;
+        $averageAge = Employee::all()->avg(function ($employee) {
+            return Carbon::parse($employee->birthday)->age;
+        });
+
+        $totalSalary = Employee::sum('monthly_salary');
+
+        return view('employees.summary', compact(
+            'maleCount',
+            'femaleCount',
+            'averageAge',
+            'totalSalary'
+        ));
+    }
 }
