@@ -1,7 +1,10 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\HomeController;
+use App\Http\Middleware\EnsureUserIsVerified;
 
 /*
 |--------------------------------------------------------------------------
@@ -9,23 +12,52 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+// Homepage Routes
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/about', [HomeController::class, 'about'])->name('about');
+Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
+
+// Authentication Routes
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [AuthController::class, 'showRegistrationForm'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
+
+    Route::get('/verify-pin', [AuthController::class, 'showVerifyPinForm'])
+        ->name('verify.pin');
+    Route::post('/verify-pin', [AuthController::class, 'verifyPin'])
+        ->name('verify.pin.submit');
+    Route::post('/resend-pin', [AuthController::class, 'resendPin'])
+        ->name('resend.pin');
+
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Authenticated & Verified Routes
+Route::middleware(['auth', EnsureUserIsVerified::class])->group(function () {
+    // Logout
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Dashboard
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+
+    // Employee Management
+    // Custom summary route placed BEFORE resource route
+    Route::get('/employees/summary', [EmployeeController::class, 'summary'])
+        ->name('employees.summary');
+
+    // Resource route with show method excluded to prevent conflict
+    Route::resource('employees', EmployeeController::class);
 });
 
-require __DIR__.'/auth.php';
+// Fallback Route
+Route::fallback(function () {
+    return redirect()->route('home');
+});
