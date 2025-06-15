@@ -99,4 +99,37 @@ class AuthController extends Controller
 
         return back()->with('status', 'New verification code sent!');
     }
+
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            return back()->withErrors(['email' => 'Invalid credentials']);
+        }
+
+        if (!$user->is_verified) {
+            return redirect()->route('verify.pin')->with([
+                'email' => $user->email,
+                'error' => 'Please verify your email first'
+            ]);
+        }
+
+        Auth::login($user);
+        return redirect()->intended('/dashboard');
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    }
 }
